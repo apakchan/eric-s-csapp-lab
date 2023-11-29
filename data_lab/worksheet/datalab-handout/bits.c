@@ -143,7 +143,11 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+  	int tmp1 = x & ~y;
+	int tmp2 = ~x & y;
+	// how to impl 'or' by 'and' and 'not'
+	// a | b = ~(~a & ~b)
+	return ~(~tmp1 & ~tmp2);
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,9 +156,8 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
-
+	// 100000000...0 is the minimun two's complement integer
+   	return 1<<31;
 }
 //2
 /*
@@ -165,7 +168,11 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+	// assuming that Tmax is the number add 1 eq ab number
+	int not_x = ~x;
+	int plus1 = x + 1;
+	// !(!(~x)) is to exclude -1 case
+	return !(plus1 ^ not_x) & !(!(~x));
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +183,13 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+	int fore_16 = x >> 16;
+	int x_16 = fore_16 & x;
+	int fore_8  = x_16 >> 8;
+	int x_8 = fore_8 & x_16;
+	int fore_4 = x_8 >> 4;
+	int x_4 = fore_4 & x_8;
+  	return !((x_4 & 0xA) ^ 0xa);
 }
 /* 
  * negate - return -x 
@@ -186,7 +199,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+	return ~x + 1;
 }
 //3
 /* 
@@ -199,7 +212,10 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+	int x_7_4 = x >> 0x4 & 0xF;
+	int x_3_3 = x & 0x8;
+	int x_2_1 = x & 0x6;
+	return (!(x >> 0x8) & !(x_7_4 ^ 0x3)) & (!x_3_3 | !x_2_1);
 }
 /* 
  * conditional - same as x ? y : z 
@@ -209,7 +225,13 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+	// get sign
+	int condition = !!x;
+	// sign the sign
+	condition = condition | (condition << 31);
+	// 000...0 or 111...1
+	condition = condition >> 31;
+	return (condition & y) | (~condition & z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -218,8 +240,15 @@ int conditional(int x, int y, int z) {
  *   Max ops: 24
  *   Rating: 3
  */
+// x <= y eq x - y <= 0
+// in case of over flow, we should jugde sign at first
 int isLessOrEqual(int x, int y) {
-  return 2;
+	int minus_y = ~y + 1;
+	int x_m_y = x + minus_y;
+	int sign_x = x >> 31;
+	int sign_y = y >> 31;
+	int sign_x_m_y = x_m_y >> 31;
+	return !(x ^ y) | (((sign_x ^ sign_y) & sign_x) & 0x1) | ((~(sign_x ^ sign_y) & sign_x_m_y) & 0x1);
 }
 //4
 /* 
@@ -231,7 +260,9 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  	int sign_x = x >> 31;
+	int minus_sign_x = (~x + 1) >> 31;
+	return (~(sign_x | minus_sign_x)) & 0x1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -245,8 +276,35 @@ int logicalNeg(int x) {
  *  Max ops: 90
  *  Rating: 4
  */
+// 给出一个规律：
+// 111000....01110 取反得 000111.....10001 这个数对这题的答案为 30, 也就是原来负数的答案
+// 所以如果 x 是负数, 对它取反后运算的结果应该是一致的
+// 现在的问题是如何判断一个正数最少用多少 bit 表达这个数
 int howManyBits(int x) {
-  return 0;
+	int sign = x >> 31;
+	int new_x = sign ^ x;
+	int new_x_16 = new_x >> 16;
+	// if new_x_16 > 0 then 1111...111 else 0000...000
+	int sign_new_x_16 = (new_x_16 | ((!!new_x_16) << 31)) >> 31;
+	new_x_16 = (sign_new_x_16 & new_x_16) + ((~sign_new_x_16) & new_x);
+
+	// handle new_x_4 get highest bit index
+	// res = new_x_4;
+	// new_x = new_x >> 4;
+	// new_x_4 = new_x & 0xF;
+
+	//res = (!!new_x_4) << 31 >> 31 & i_4 + new_x_4;
+	//new_x = new_x >> 4;
+	//new_x_4 = new_x & 0xF;
+
+	//res = (!!new_x_4) << 31 >> 31 & i_8 + new_x_4;
+	//new_x = new_x >> 4;
+	//new_x_4 = new_x & 0xF;
+
+	return !!(new_x_16) + !!(new_x_16 >> 1) + !!(new_x_16 >> 2) + !!(new_x_16 >> 3)+ !!(new_x_16 >> 4)+ !!(new_x_16 >> 5)+ !!(new_x_16 >> 6)+ !!(new_x_16 >> 7)+ !!(new_x_16 >> 8)+ !!(new_x_16 >> 9)
+		+ !!(new_x_16 >> 10)+ !!(new_x_16 >> 11)+ !!(new_x_16 >> 12)+ !!(new_x_16 >> 13)+ !!(new_x_16 >> 14)+ !!(new_x_16 >> 15) + !!(new_x_16 >> 16)
+		+ (sign_new_x_16 & 17) + ((~sign_new_x_16) & 1);
+
 }
 //float
 /* 
